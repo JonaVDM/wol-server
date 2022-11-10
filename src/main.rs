@@ -1,8 +1,8 @@
-use std::io;
+mod list;
+mod wol;
 
 use actix_web::{delete, get, post, web, App, HttpResponse, HttpServer, Responder};
-
-mod wol;
+use std::io;
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -19,8 +19,13 @@ async fn main() -> io::Result<()> {
 }
 
 #[get("/wake/{id}")]
-async fn wake(_id: web::Path<String>) -> impl Responder {
-    match wol::wol("18:c0:4d:c0:72:7f", "255.255.255.255") {
+async fn wake(id: web::Path<String>) -> impl Responder {
+    let item = match list::get_item(id.to_string()) {
+        Ok(i) => i,
+        Err(_) => return HttpResponse::BadRequest().body("Unkown ID"),
+    };
+
+    match wol::wol(&item.mac, "255.255.255.255") {
         Ok(_) => HttpResponse::Ok().body("The PC has awoken"),
         Err(_) => HttpResponse::InternalServerError().body("The PC could not be woken"),
     }
@@ -28,15 +33,31 @@ async fn wake(_id: web::Path<String>) -> impl Responder {
 
 #[post("/pc")]
 async fn pc_new(body: String) -> impl Responder {
-    format!("Adding pc with mac: {body}")
+    let res: Vec<_> = body.split(";").collect();
+
+    if res.len() < 2 {
+        return HttpResponse::BadRequest().body("Body needs at least 2 arguemnts");
+    }
+
+    match list::add_item(res[0].to_owned(), res[1].to_owned()) {
+        Ok(()) => HttpResponse::Ok().body("ok"),
+        Err(()) => HttpResponse::InternalServerError().body("Something went wrong"),
+    }
 }
 
 #[delete("/pc/{id}")]
 async fn pc_delete(id: web::Path<String>) -> impl Responder {
-    format!("Deleting pc with id: {id}")
+    list::delete_item(id.to_string());
+
+    HttpResponse::Ok().body("ok")
 }
 
 #[get("/pc")]
 async fn pc_list() -> impl Responder {
-    format!("A list of pc's")
+    let items = list::get_items()
+        .into_iter()
+        .map(|i| i.name)
+        .collect::<Vec<String>>()
+        .join(" ");
+    format!("{items}")
 }
