@@ -58,6 +58,7 @@ pub fn delete_item(id: String) {
 pub fn add_item(name: String, mac: String) -> Result<(), ()> {
     // let file = fs::File::create("computers.yml").unwrap();
     let file = OpenOptions::new()
+        .create_new(true)
         .write(true)
         .append(true)
         .open("computers.yml")

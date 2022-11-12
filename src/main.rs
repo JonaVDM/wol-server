@@ -1,6 +1,7 @@
 mod list;
 mod wol;
 
+use actix_files as fs;
 use actix_web::{delete, get, post, web, App, HttpResponse, HttpServer, Responder};
 use std::io;
 
@@ -12,13 +13,19 @@ async fn main() -> io::Result<()> {
             .service(pc_list)
             .service(pc_new)
             .service(pc_delete)
+            .service(
+                fs::Files::new("/", "./frontend/dist")
+                    .show_files_listing()
+                    .use_last_modified(true)
+                    .index_file("index.html"),
+            )
     })
     .bind(("127.0.0.1", 8080))?
     .run()
     .await
 }
 
-#[get("/wake/{id}")]
+#[get("/api/wake/{id}")]
 async fn wake(id: web::Path<String>) -> impl Responder {
     let item = match list::get_item(id.to_string()) {
         Ok(i) => i,
@@ -31,7 +38,7 @@ async fn wake(id: web::Path<String>) -> impl Responder {
     }
 }
 
-#[post("/pc")]
+#[post("/api/pc")]
 async fn pc_new(body: String) -> impl Responder {
     let res: Vec<_> = body.split(";").collect();
 
@@ -45,19 +52,19 @@ async fn pc_new(body: String) -> impl Responder {
     }
 }
 
-#[delete("/pc/{id}")]
+#[delete("/api/pc/{id}")]
 async fn pc_delete(id: web::Path<String>) -> impl Responder {
     list::delete_item(id.to_string());
 
     HttpResponse::Ok().body("ok")
 }
 
-#[get("/pc")]
+#[get("/api/pc")]
 async fn pc_list() -> impl Responder {
     let items = list::get_items()
         .into_iter()
-        .map(|i| i.name)
+        .map(|i| format!("{};{};{}", i.id, i.name, i.mac))
         .collect::<Vec<String>>()
-        .join(" ");
+        .join("\n");
     format!("{items}")
 }
