@@ -20,7 +20,8 @@ async fn main() -> io::Result<()> {
                     .index_file("index.html"),
             )
     })
-    .bind(("127.0.0.1", 8080))?
+    // .bind(("127.0.0.1", 8080))?
+    .bind("[::]:8080")?
     .run()
     .await
 }

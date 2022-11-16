@@ -3,3 +3,4 @@ dist/
 Dockerfile
 README.md
 .gitignore
+target/
