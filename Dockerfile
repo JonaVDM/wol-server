@@ -1,16 +1,18 @@
-FROM node:18-alpine as react_builder
+FROM node:18-alpine AS react_builder
 WORKDIR /usr/src/app
 COPY frontend/package*.json .
 RUN npm install
 COPY frontend .
 RUN npm run build
 
-FROM rust
-COPY --from=react_builder /usr/src/app/dist /frontend/dist
+FROM rust:bullseye AS rust_builder
 WORKDIR /usr/src/app
 COPY . .
 RUN cargo build --release
-WORKDIR /
-EXPOSE 8080
-CMD ["/usr/src/app/target/release/wol-server"]
 
+FROM debian:bullseye
+WORKDIR /
+COPY --from=react_builder /usr/src/app/dist /frontend/dist
+COPY --from=rust_builder /usr/src/app/target/release/wol-server /wol
+EXPOSE 8080
+CMD ["/wol"]
